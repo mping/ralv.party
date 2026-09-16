@@ -2,20 +2,20 @@
 
 ## Project Structure & Module Organization
 
-The application is a Svelte 5 and TypeScript SPA. Views live in `src/pages/`, reusable UI in `src/components/`, and helpers in `src/lib/`. Global styles are in `src/app.css`; static assets and the Cloudflare Pages redirect rule are under `public/`. Supabase migrations live in `supabase/migrations/`, and the registration Edge Function is in `supabase/functions/register/`. Keep planning notes in `plans/`. Product copy remains Portuguese (`pt-PT`).
+The application is a React and TypeScript SPA. Views live in `src/pages/`, reusable UI in `src/components/`, and helpers in `src/lib/`. Global styles are in `src/app.css`; static assets and the Cloudflare Pages redirect rule are under `public/`. Supabase migrations live in `supabase/migrations/`, and the registration Edge Function is in `supabase/functions/register/`. Keep planning notes in `plans/`. Product copy remains Portuguese (`pt-PT`).
 
 ## Build, Test, and Development Commands
 
 - `npm ci` installs the exact dependency versions from `package-lock.json`.
 - `npm run dev` starts the Vite development server.
-- `npm run check` runs `svelte-check` and both TypeScript configurations.
+- `npm run check` runs both TypeScript configurations.
 - `npm run build` creates the static production bundle in `dist/`.
 - `npm run preview` serves that bundle for final local verification.
 - `npx supabase functions serve register --env-file supabase/functions/.env` runs the registration function locally; never commit that environment file.
 
 ## Coding Style & Naming Conventions
 
-Use two-space indentation, single quotes, and semicolons in application TypeScript. Name Svelte components in PascalCase (`PinForm.svelte`), functions and variables in camelCase, and SQL migrations with timestamped snake-case names. Write code identifiers, comments, logs, and developer documentation in English; reserve Portuguese (`pt-PT`) for user-facing copy. Prefer explicit TypeScript types at external boundaries. Use Svelte 5 runes consistently, and initialize and destroy Leaflet instances through component lifecycle hooks. No ESLint or Prettier configuration is currently present; `npm run check` is the authoritative static check.
+Use two-space indentation, single quotes, and semicolons in application TypeScript. Name React components in PascalCase (`PinForm.tsx`), functions and variables in camelCase, and SQL migrations with timestamped snake-case names. Write code identifiers, comments, logs, and developer documentation in English; reserve Portuguese (`pt-PT`) for user-facing copy. Prefer explicit TypeScript types at external boundaries. Use function components and hooks consistently, and initialize and destroy Leaflet instances through effects. No ESLint or Prettier configuration is currently present; `npm run check` is the authoritative static check.
 
 ## Testing Guidelines
 

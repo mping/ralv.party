@@ -4,14 +4,14 @@
 
 The repo is empty except for an untracked README.md that defines the idea: a Portuguese-language Halloween trick-or-treat pin map, similar to trickortreatmap.com. People register their house (name, email + Cloudflare Turnstile), receive a magic link by email, and use it to manage pins (name, address, timespan, sweets) that appear on a public map and list. The README constraints: pure client-side, free mapping (Leaflet/OSM), deploy to Vercel/Netlify/Cloudflare, simple database.
 
-**Decisions confirmed with the user:** Svelte 5 + Vite SPA · Supabase (Postgres) · persistent secret-URL magic link (`/gerir/{uuid}`, no expiry — the uuid IS the authority) · Cloudflare Pages.
+**Decisions confirmed with the user:** React + Vite SPA · Supabase (Postgres) · persistent secret-URL magic link (`/gerir/{uuid}`, no expiry — the uuid IS the authority) · Cloudflare Pages.
 
 Note on "pure client-side": the site is a fully static SPA with no app server. One Supabase Edge Function exists for the one thing browsers cannot do — sending the magic-link email (and verifying Turnstile server-side). That is the minimal, unavoidable exception.
 
 ## Architecture
 
 ```
-Browser (Svelte 5 SPA, static on Cloudflare Pages)
+Browser (React SPA, static on Cloudflare Pages)
  ├─ GET  /                 → Home: public map + list
  ├─ GET  /gerir/{uuid}     → Manage page (secret-URL authority)
  │
@@ -43,18 +43,18 @@ Browser (Svelte 5 SPA, static on Cloudflare Pages)
 
 ```bash
 cd /home/mping/Devel/workspace/ralvessura
-npm create vite@latest . -- --template svelte-ts
+npm create vite@latest . -- --template react-ts
 npm install
 npm install leaflet @supabase/supabase-js
 npm install -D @types/leaflet supabase
 ```
 
-→ Vite 8, Svelte ^5.57, leaflet ^1.9.4, supabase-js **^2** (v3 still stabilizing). Delete template `Counter.svelte`/assets. No Tailwind, no UI framework — plain CSS variables. `index.html`: `lang="pt-PT"`, title "Doces ou Travessuras". Commit after scaffold.
+→ Vite 8, React ^19, leaflet ^1.9.4, supabase-js **^2** (v3 still stabilizing). Delete template `Counter.tsx`/assets. No Tailwind, no UI framework — plain CSS variables. `index.html`: `lang="pt-PT"`, title "Doces ou Travessuras". Commit after scaffold.
 
 ## File structure (~15 files)
 
 ```
-├── index.html · vite.config.ts · svelte.config.js · .env.example
+├── index.html · vite.config.ts · .env.example
 ├── public/
 │   ├── _redirects                  # Cloudflare Pages SPA fallback (see below)
 │   └── favicon.svg                 # pumpkin
@@ -63,24 +63,22 @@ npm install -D @types/leaflet supabase
 │   ├── migrations/20260915000000_init.sql
 │   └── functions/register/index.ts # THE one edge function
 └── src/
-    ├── main.ts · App.svelte (route switch + header/footer) · app.css
+    ├── main.tsx · App.tsx (route switch + header/footer) · app.css
     ├── lib/
     │   ├── supabase.ts             # client + typed rpc wrappers
-    │   ├── router.ts               # ~30-line path router (2 routes; hand-rolled —
-    │   │                           # svelte-spa-router is unmaintained for Svelte 5)
-    │   ├── geocode.ts              # Photon search + reverse, debounced + cached
+    │   ├── router.ts               # small useRoute hook for the two routes
+    │   ├── geocode.ts              # Photon/Komoot search + reverse, debounced + cached
     │   ├── sweets.ts               # fixed categories + pt labels
     │   └── format.ts               # pt-PT date/time + EVENT_DATE (Oct 31 current year)
     ├── pages/
-    │   ├── Home.svelte             # map/list toggle, register CTA
-    │   └── Manage.svelte           # /gerir/{uuid}: add/edit/delete pins
+    │   ├── Home.tsx                # map/list toggle, register CTA
+    │   └── Manage.tsx              # /gerir/{uuid}: add/edit/delete pins
     └── components/
-        ├── Map.svelte              # Leaflet wrapper (display + editor modes)
-        ├── PinForm.svelte          # modal add/edit form with address search
-        ├── AddressSearch.svelte    # Photon autocomplete
-        ├── PinCard.svelte          # list card (home) / row (manage)
-        ├── RegisterModal.svelte    # name/email/Turnstile
-        └── Turnstile.svelte        # own ~25-line wrapper (turnstile.render)
+        ├── Map.tsx                 # Leaflet wrapper (display + editor modes)
+        ├── PinForm.tsx             # modal add/edit form with address search
+        ├── AddressSearch.tsx       # Photon/Komoot autocomplete
+        ├── PinCard.tsx             # list card (home) / row (manage)
+        └── RegisterModal.tsx       # name/email registration modal
 ```
 
 ## Supabase design
@@ -119,12 +117,12 @@ Secrets: `TURNSTILE_SECRET`, `RESEND_API_KEY`, `SITE_URL` (the three `SUPABASE_*
   /assets/*  /assets/:splat  200
   /*         /index.html     200
   ```
-- **Map.svelte**: Leaflet 1.9.4 used directly — `L.map` in `onMount`, instance in a plain (non-reactive) `let`, `map.remove()` on destroy, markers synced in a separate `$effect` watching the `pins` prop. **Never put the map in `$state`** (Svelte 5 gotcha). Tiles: standard OpenStreetMap `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, attribution `© OpenStreetMap contributors`; Portugal center `[39.7, -8.0]`, zoom 7. Markers: custom pumpkin SVG `L.divIcon` (~2KB). No clustering (~150 pins scale). Home popup: name, address, timeframe, sweets chips, "Como chegar" link (`google.com/maps/dir/?api=1&destination=lat,lng`). Manage mode: map click → draft marker → opens PinForm prefilled with reverse-geocoded address.
+- **Map.tsx**: Leaflet 1.9.4 used directly — `L.map` in a mount effect, instance in refs, and `map.remove()` in effect cleanup. Marker layers are synchronized in an effect watching `pins`. The initial center is `[38.750361, -9.147444]`, and zoom is configurable. Markers use a custom pumpkin `L.divIcon`; the management map recenters after browser-location permission is granted.
 - **Geocoding**: **Photon, not client-side Nominatim** — Nominatim's policy explicitly forbids browser autocomplete (no User-Agent header possible, 1 req/s aggregate limit). Photon (`photon.komoot.io/api/?q=…&limit=6&lang=pt`, `/reverse`) is same OSM data, CORS-enabled, autocomplete-native. Debounce ~350ms, min 3 chars, `AbortController` cancel, module-level cache.
-- **Home.svelte**: full-viewport map; floating header (logo, CTA "Registar a minha casa", toggle "Mapa | Lista"); list = PinCards sorted by date/start_time with name, address, timeframe, sweets chips; click card → flyTo pin; empty state "Ainda não há casas com doces na tua zona. Sê o primeiro a adicionar a tua!"; footer attribution.
-- **RegisterModal.svelte**: "Nome", "Email", Turnstile widget (dark theme, `language: 'pt-PT'`, site key from `VITE_TURNSTILE_SITE_KEY`), submit "Receber a minha ligação" → `functions.invoke('register', …)` → success "Verifica o teu email — enviámos-te uma ligação mágica. Guarda-a…". Map error codes to pt strings.
-- **Manage.svelte**: loading → `get_my_data(uuid)`; `found:false` → "Ligação desconhecida…" + register CTA; `found:true` → "Olá, {name}", editor map, "Adicionar pin", own-pin list with "Editar" (prefilled PinForm) / "Remover" (confirm), persistent banner "Guarda esta ligação nos favoritos — é a tua chave de acesso" + "Reenviar por email" (re-invokes register with stored email → same link, free via idempotent design).
-- **PinForm.svelte** (add + edit): "Nome do pin", "Morada" + AddressSearch (select sets address+lat/lng; map-click prefill stays hand-editable), "Dia" (default Oct 31), "Hora de início"/"Hora de fim", sweets checkbox chips, "Guardar"/"Cancelar". Validate: name, address, start<end, ≥1 sweet.
+- **Home.tsx**: full-viewport map; floating header (logo, CTA "Registar a minha casa", toggle "Mapa | Lista"); list = PinCards sorted by date/start_time with name, address, timeframe, sweets chips; click card → flyTo pin; empty state "Ainda não há casas com doces na tua zona. Sê o primeiro a adicionar a tua!"; footer attribution.
+- **RegisterModal.tsx**: "Nome" and "Email" submit "Receber a minha ligação" → `functions.invoke('register', …)` → success "Verifica o teu email — enviámos-te uma ligação mágica. Guarda-a…". Map error codes to pt strings.
+- **Manage.tsx**: loading → `get_my_data(uuid)`; `found:false` → "Ligação desconhecida…" + register CTA; `found:true` → "Olá, {name}", editor map, "Adicionar pin", own-pin list with "Editar" (prefilled PinForm) / "Remover" (confirm), and a persistent bookmark reminder.
+- **PinForm.tsx** (add + edit): "Nome do pin", "Morada" + AddressSearch (select sets address+lat/lng; map-click prefill stays hand-editable), crosshair browser-location action, "Dia" (default Oct 31), "Hora de início"/"Hora de fim", sweets checkbox chips, "Guardar"/"Cancelar". Validate: name, address, start<end, ≥1 sweet.
 - **Styling** (`app.css`): dark Halloween palette — near-black purple `#1a0f1e`, pumpkin orange `#ff7a1a`, purple `#7b2d8b`, cream text; rounded cards, chips. No framework.
 
 ## Config / env
@@ -143,7 +141,7 @@ Edge Function secrets (never committed): `TURNSTILE_SECRET`, `RESEND_API_KEY`, `
 2. `supabase init` → write migration → `supabase db push` (hosted; or `supabase start` for full-local).
 3. Edge Function `register` → test locally with curl.
 4. `lib/` modules: supabase.ts, router.ts, geocode.ts, sweets.ts, format.ts.
-5. Map.svelte + Home.svelte (read-only happy path: pins, popups, list toggle).
+5. Map.tsx + Home.tsx (read-only happy path: pins, popups, list toggle).
 6. RegisterModal + Turnstile (end-to-end register with test keys).
 7. Manage + PinForm + AddressSearch (add → edit → delete).
 8. Polish: icons, empty/error states, date filter, resend-link, pt-PT copy, mobile touch targets.
@@ -164,7 +162,7 @@ Edge Function secrets (never committed): `TURNSTILE_SECRET`, `RESEND_API_KEY`, `
 
 1. **`pins.user_id` leak** = leak of everyone's manage link. Never add a public SELECT policy on `pins`; only `get_public_pins()`.
 2. **Nominatim client-side is policy-forbidden** → Photon (decision already baked in).
-3. **Svelte 5 + Leaflet**: init/destroy in lifecycle, keep instance out of reactive state.
+3. **React + Leaflet**: initialize and destroy the map in effects, keeping mutable map instances in refs.
 4. **Cloudflare Pages**: no `200.html` — use `_redirects`; keep `/assets/*` passthrough.
 5. **Resend free tier** 100/day (launch-day rush could hit it — noted, not over-engineered); real sends need verified domain.
 6. **Secret-URL model**: anyone with the link controls the pins (accepted by design; link sits in email + history).

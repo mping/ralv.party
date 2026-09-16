@@ -1,4 +1,4 @@
-import { svelte } from '@sveltejs/vite-plugin-svelte';
+import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 
 // https://vite.dev/config/
@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'SUPABASE_');
 
   return {
-    plugins: [svelte()],
+    plugins: [react()],
     // Expose only the two public browser values. Using envPrefix: 'SUPABASE_'
     // would also bundle a service-role key if one were added by mistake.
     define: {

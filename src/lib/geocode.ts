@@ -1,7 +1,5 @@
-// Geocode through the OpenRouteService-backed Edge Function. Keeping the API key
-// in the function means it is never bundled into the browser application.
-
-import { supabase } from './supabase';
+// Photon is the public Komoot geocoder backed by OpenStreetMap data. It does
+// not require an API key; the app keeps its usage debounced and cached.
 
 export interface GeocodeResult {
   label: string;
@@ -9,42 +7,86 @@ export interface GeocodeResult {
   lng: number;
 }
 
-interface GeocodeResponse {
-  results?: GeocodeResult[];
-  error?: string;
+interface PhotonFeature {
+  geometry?: { coordinates?: unknown };
+  properties?: {
+    name?: unknown;
+    street?: unknown;
+    housenumber?: unknown;
+    city?: unknown;
+    district?: unknown;
+    postcode?: unknown;
+  };
 }
 
 const searchCache = new Map<string, GeocodeResult[]>();
 const reverseCache = new Map<string, string>();
 
-async function requestGeocode(body: Record<string, unknown>, signal?: AbortSignal): Promise<GeocodeResult[]> {
-  const { data, error } = await supabase.functions.invoke<GeocodeResponse>('geocode', {
-    body,
-    signal,
+function isCoordinate(value: unknown): value is [number, number] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 2 &&
+    typeof value[0] === 'number' &&
+    Number.isFinite(value[0]) &&
+    typeof value[1] === 'number' &&
+    Number.isFinite(value[1])
+  );
+}
+
+function text(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function buildLabel(properties: PhotonFeature['properties']): string {
+  const streetName = text(properties?.street);
+  const houseNumber = text(properties?.housenumber);
+  const street = streetName ? [streetName, houseNumber].filter(Boolean).join(' ') : text(properties?.name);
+  const locality = text(properties?.city) || text(properties?.district);
+  return [street, locality, text(properties?.postcode)].filter(Boolean).join(', ');
+}
+
+function toResult(feature: PhotonFeature): GeocodeResult | null {
+  const coordinates = feature.geometry?.coordinates;
+  if (!isCoordinate(coordinates)) return null;
+
+  const label =
+    buildLabel(feature.properties) ||
+    `${coordinates[1].toFixed(5)}, ${coordinates[0].toFixed(5)}`;
+  return { label, lat: coordinates[1], lng: coordinates[0] };
+}
+
+async function photonRequest(url: URL, signal?: AbortSignal): Promise<GeocodeResult[]> {
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error('geocode_failed');
+
+  const data = (await response.json()) as { features?: unknown };
+  const features = Array.isArray(data.features) ? (data.features as PhotonFeature[]) : [];
+  return features.flatMap((feature) => {
+    const result = toResult(feature);
+    return result ? [result] : [];
   });
-  if (error) {
-    const context = (error as { context?: unknown }).context;
-    const responseError =
-      typeof context === 'object' && context !== null
-        ? (context as GeocodeResponse).error
-        : undefined;
-    throw new Error(responseError ?? 'geocode_failed');
-  }
-  if (data?.error) throw new Error(data.error);
-  return data?.results ?? [];
 }
 
 export async function searchAddress(
   query: string,
   signal?: AbortSignal,
 ): Promise<GeocodeResult[]> {
-  const q = query.trim();
-  const cached = searchCache.get(q);
+  const trimmedQuery = query.trim();
+  const cached = searchCache.get(trimmedQuery);
   if (cached) return cached;
 
-  const results = await requestGeocode({ type: 'autocomplete', query: q }, signal);
+  const url = new URL('https://photon.komoot.io/api/');
+  url.searchParams.set('q', trimmedQuery);
+  url.searchParams.set('limit', '6');
+  url.searchParams.set('lang', 'en');
+  if (/\d/.test(trimmedQuery)) {
+    // Restrict number-containing searches to complete addresses or their street fallback.
+    url.searchParams.append('layer', 'house');
+    url.searchParams.append('layer', 'street');
+  }
 
-  searchCache.set(q, results);
+  const results = await photonRequest(url, signal);
+  searchCache.set(trimmedQuery, results);
   return results;
 }
 
@@ -53,7 +95,12 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   const cached = reverseCache.get(key);
   if (cached) return cached;
 
-  const [result] = await requestGeocode({ type: 'reverse', lat, lng });
+  const url = new URL('https://photon.komoot.io/reverse');
+  url.searchParams.set('lon', String(lng));
+  url.searchParams.set('lat', String(lat));
+  url.searchParams.set('lang', 'en');
+
+  const [result] = await photonRequest(url);
   const label = result?.label ?? '';
   reverseCache.set(key, label);
   return label;

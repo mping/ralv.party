@@ -4,8 +4,8 @@ A community **trick-or-treat map** for Portugal, inspired by the [Trick or Treat
 
 ## Architecture
 
-- Svelte 5, TypeScript, and Vite, deployed as a static SPA.
-- Leaflet with OpenStreetMap tiles and OpenRouteService geocoding.
+- React, TypeScript, and Vite, deployed as a static SPA.
+- Leaflet with OpenStreetMap tiles and Photon/Komoot geocoding.
 - Supabase Postgres with RLS and RPCs for public reads and pin management.
 - A Supabase Edge Function creates registrations and sends management links through Resend.
 - Cloudflare Pages is the recommended frontend host.
@@ -40,10 +40,6 @@ The URL and publishable key are bundled into the browser application, where acce
 
 For testing, `onboarding@resend.dev` can send only to the email address associated with your Resend account. Sending to other users requires a verified domain. See the Resend documentation for [API keys](https://resend.com/docs/dashboard/api-keys/introduction) and [verified domains](https://resend.com/docs/dashboard/domains/introduction).
 
-### 3. OpenRouteService
-
-Create an API key in [OpenRouteService](https://openrouteservice.org/dev/#/signup) and add it to the hosted Supabase project as `OPENROUTESERVICE_API_KEY`. This key is used only by the `geocode` Edge Function and must not be placed in the frontend `.env` file.
-
 ## Run with hosted Supabase
 
 Install dependencies and create the frontend environment file:
@@ -75,7 +71,6 @@ In the Supabase Dashboard, open **Edge Functions → Secrets** and add:
 | `RESEND_API_KEY` | API key created in Resend |
 | `FROM_EMAIL` | Sender authorized by Resend |
 | `SITE_URL` | `http://localhost:5173` during local development, or the public URL |
-| `OPENROUTESERVICE_API_KEY` | API key from OpenRouteService, used only by the `geocode` Edge Function |
 
 The Edge Function runtime receives its own `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` automatically from Supabase. The root frontend `.env` also contains the public URL, but it must never contain `SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -83,7 +78,6 @@ Deploy the registration function:
 
 ```bash
 npx supabase functions deploy register
-npx supabase functions deploy geocode
 ```
 
 Start the frontend:
@@ -109,16 +103,12 @@ Copy the displayed API URL and publishable/anon key into `.env`. Create `supabas
 RESEND_API_KEY=re_...
 FROM_EMAIL=onboarding@resend.dev
 SITE_URL=http://localhost:5173
-OPENROUTESERVICE_API_KEY=...
 ```
 
 Run the function and frontend in separate terminals:
 
 ```bash
 npx supabase functions serve register --env-file supabase/functions/.env
-
-# In another terminal, when testing address search:
-npx supabase functions serve geocode --env-file supabase/functions/.env
 ```
 
 ```bash
@@ -128,7 +118,7 @@ npm run dev
 ## Checks and production build
 
 ```bash
-npm run check    # Run Svelte and TypeScript checks
+npm run check    # Run TypeScript checks
 npm run build    # Build the production bundle in dist/
 npm run preview  # Preview the production bundle locally
 ```

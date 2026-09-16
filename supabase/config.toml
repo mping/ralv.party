@@ -417,7 +417,3 @@ enabled = true
 # Registration is a public endpoint, so no JWT is required.
 [functions.register]
 verify_jwt = false
-
-# Geocoding is called by anonymous visitors while they create a pin.
-[functions.geocode]
-verify_jwt = false
