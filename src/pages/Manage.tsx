@@ -9,6 +9,7 @@ import {
   upsertPin,
   type Pin,
   type PinInput,
+  type MyData,
 } from '../lib/supabase';
 
 interface ManageProps {
@@ -37,6 +38,13 @@ function requestUserLocation(onLocation: (location: { lat: number; lng: number }
   );
 }
 
+function mostRecentPin(pins: Pin[]): Pin | null {
+  return pins.reduce<Pin | null>((latest, pin) => {
+    if (!latest) return pin;
+    return (pin.created_at ?? '') > (latest.created_at ?? '') ? pin : latest;
+  }, null);
+}
+
 export default function Manage({ uuid }: ManageProps) {
   const [loading, setLoading] = useState(true);
   const [found, setFound] = useState(false);
@@ -46,24 +54,35 @@ export default function Manage({ uuid }: ManageProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<PinDraft>(null);
   const [focus, setFocus] = useState<{ lat: number; lng: number; n: number } | null>(null);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
 
-  const loadData = useCallback(async (): Promise<void> => {
+  const loadData = useCallback(async (): Promise<MyData> => {
     const data = await getMyData(uuid);
     setFound(data.found);
     if (data.found) {
       setUserName(data.name ?? '');
       setPins(data.pins ?? []);
     }
+    return data;
   }, [uuid]);
 
   useEffect(() => {
     let active = true;
-    requestUserLocation((location) => {
-      if (active) setUserLocation(location);
-    });
 
     void loadData()
+      .then((data) => {
+        if (!active || !data.found) return;
+
+        const latest = mostRecentPin(data.pins ?? []);
+        if (latest) {
+          setMapCenter({ lat: latest.lat, lng: latest.lng });
+          return;
+        }
+
+        requestUserLocation((location) => {
+          if (active) setMapCenter(location);
+        });
+      })
       .catch((error) => {
         if (active) setLoadError(mapError(error));
       })
@@ -148,7 +167,8 @@ export default function Manage({ uuid }: ManageProps) {
             <Map
               pins={pins}
               mode="edit"
-              center={userLocation}
+              initialCenter={mapCenter ?? undefined}
+              center={mapCenter}
               focus={focus}
               onMapClick={(location) => openForm(location)}
             />
