@@ -63,7 +63,7 @@ function popupHtml(pin: Pin): string {
       <p class="p-addr">📍 ${escapeHtml(pin.address)}</p>
       <p class="p-time">⏰ ${escapeHtml(formatTime(pin.start_time))} – ${escapeHtml(formatTime(pin.end_time))}</p>
       <div class="chips">${chips}</div>
-      <a class="p-dir" href="https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}" target="_blank" rel="noreferrer">Como chegar</a>
+      <a class="p-dir" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pin.address)}" target="_blank" rel="noreferrer">Como chegar</a>
     </div>`;
 }
 

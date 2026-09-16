@@ -1,4 +1,4 @@
-# ralvessura — "Doces ou Travessuras" (Halloween map, pt-PT)
+# ralvessura — "RALV.PARTY" (Halloween map, pt-PT)
 
 ## Context
 
@@ -49,7 +49,7 @@ npm install leaflet @supabase/supabase-js
 npm install -D @types/leaflet supabase
 ```
 
-→ Vite 8, React ^19, leaflet ^1.9.4, supabase-js **^2** (v3 still stabilizing). Delete template `Counter.tsx`/assets. No Tailwind, no UI framework — plain CSS variables. `index.html`: `lang="pt-PT"`, title "Doces ou Travessuras". Commit after scaffold.
+→ Vite 8, React ^19, leaflet ^1.9.4, supabase-js **^2** (v3 still stabilizing). Delete template `Counter.tsx`/assets. No Tailwind, no UI framework — plain CSS variables. `index.html`: `lang="pt-PT"`, title "RALV.PARTY". Commit after scaffold.
 
 ## File structure (~15 files)
 

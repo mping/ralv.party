@@ -57,7 +57,7 @@ export default function Home() {
         <div className="brand">
           <span className="logo">🎃</span>
           <div>
-            <h1>Doces ou Travessuras</h1>
+            <h1>RALV.PARTY</h1>
             <p className="tagline">Casas com doces para o Halloween em Portugal</p>
           </div>
         </div>

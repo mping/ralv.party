@@ -82,13 +82,13 @@ Deno.serve(async (req) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `Doces ou Travessuras <${fromEmail}>`,
+      from: `RALV.PARTY <${fromEmail}>`,
       to: [email],
       subject: 'A tua ligação para gerires os teus pins 🎃',
       html: `
         <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#2a2a2a;line-height:1.6">
           <h2>Olá, ${escapeHtml(name)}! 🎃</h2>
-          <p>Está tudo pronto para o teu registo no mapa <strong>Doces ou Travessuras</strong>.</p>
+          <p>Está tudo pronto para o teu registo no mapa <strong>RALV.PARTY</strong>.</p>
           <p>Esta é a tua ligação mágica para gerires os teus pins:</p>
           <p style="margin:1.2rem 0">
             <a href="${link}" style="background:#ff7a1a;color:#1a0d00;padding:0.7rem 1.3rem;border-radius:10px;font-weight:700;text-decoration:none">Abrir o meu painel</a>

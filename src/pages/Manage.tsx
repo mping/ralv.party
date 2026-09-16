@@ -108,7 +108,7 @@ export default function Manage({ uuid }: ManageProps) {
         <div className="brand">
           <span className="logo">🎃</span>
           <div>
-            <h1>Doces ou Travessuras</h1>
+            <h1>RALV.PARTY</h1>
             <p className="tagline">A gerir os teus pins</p>
           </div>
         </div>
