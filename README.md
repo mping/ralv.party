@@ -2,20 +2,40 @@
 
 A community **trick-or-treat map** for Portugal, inspired by the [Trick or Treat Map](https://www.trickortreatmap.com/map). The interface is written in Portuguese (`pt-PT`). Visitors can browse participating homes on a map or as a list. Each participant receives a private, persistent link for adding, editing, and removing their pins.
 
+Production URL: [ralv.party](https://ralv.party).
+
 ## Architecture
 
 - React, TypeScript, and Vite, deployed as a static SPA.
-- Leaflet with OpenStreetMap tiles and Photon/Komoot geocoding.
+- Leaflet with Stadia Maps' OSM Bright tiles and Photon/Komoot geocoding.
 - Supabase Postgres with RLS and RPCs for public reads and pin management.
 - A Supabase Edge Function creates registrations and sends management links through Resend.
-- Cloudflare Pages is the recommended frontend host.
+- Cloudflare Pages serves the static frontend at `ralv.party`.
+
+```mermaid
+flowchart TB
+  visitor[Visitor's browser] -->|HTTPS: ralv.party| pages
+
+  subgraph cloudflare[Cloudflare]
+    dns[DNS zone: ralv.party] --> pages[Cloudflare Pages\nReact + Vite static SPA]
+  end
+
+  pages -->|Static assets| visitor
+  visitor -->|Public reads, RPCs and pin management| supabase
+  visitor -->|Registration request| register[Supabase Edge Function\nregister]
+  register -->|Service-role database access| supabase[(Supabase Postgres + RLS)]
+  register -->|Management-link email| resend[Resend]
+  resend -->|Email| visitor
+  visitor -->|Address search and reverse geocoding| photon[Photon / Komoot]
+  visitor -->|OSM Bright raster tiles| stadia[Stadia Maps / OpenMapTiles / OpenStreetMap]
+```
 
 ## Prerequisites
 
 - Node.js `20.19+` or `22.12+` and npm.
 - Docker, only when running Supabase locally.
 - Free [Supabase](https://supabase.com/dashboard) and [Resend](https://resend.com/) accounts.
-- A Cloudflare account only when deploying to Cloudflare Pages.
+- A Cloudflare account with the `ralv.party` zone active, for the production deployment.
 
 ## Create the required credentials
 
@@ -36,7 +56,7 @@ The URL and publishable key are bundled into the browser application, where acce
 1. For production email, add and verify a domain in [Resend Domains](https://resend.com/domains). Resend will display the DNS records that must be created.
 2. Open [Resend API Keys](https://resend.com/api-keys) and create a sending key. Restrict it to the verified domain when possible.
 3. Copy the key when it is created and store it as `RESEND_API_KEY`; its full value is not shown again.
-4. Set `FROM_EMAIL` to an address on the verified domain, such as `map@updates.example.com`.
+4. Set `FROM_EMAIL` to an address on the verified domain, such as `map@ralv.party`.
 
 For testing, `onboarding@resend.dev` can send only to the email address associated with your Resend account. Sending to other users requires a verified domain. See the Resend documentation for [API keys](https://resend.com/docs/dashboard/api-keys/introduction) and [verified domains](https://resend.com/docs/dashboard/domains/introduction).
 
@@ -70,7 +90,7 @@ In the Supabase Dashboard, open **Edge Functions → Secrets** and add:
 | --- | --- |
 | `RESEND_API_KEY` | API key created in Resend |
 | `FROM_EMAIL` | Sender authorized by Resend |
-| `SITE_URL` | `http://localhost:5173` during local development, or the public URL |
+| `SITE_URL` | `http://localhost:5173` during local development, or `https://ralv.party` in production |
 
 The Edge Function runtime receives its own `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` automatically from Supabase. The root frontend `.env` also contains the public URL, but it must never contain `SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -127,12 +147,47 @@ Manually test the complete flow: register an email, open `/gerir/{uuid}`, create
 
 ## Deploy to Cloudflare Pages
 
-In the Cloudflare Dashboard, open **Workers & Pages → Create → Pages** and connect the repository. Use `npm run build` as the build command and `dist` as the output directory. Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` to the Pages project settings. Dashboard-based Git deployment does not require a Cloudflare API token.
+The production deployment uses Cloudflare Pages Direct Upload. It builds locally using the public Supabase values from `.env`, then uploads `dist/` through Wrangler. The deploy command is:
 
-After the first deployment:
+```bash
+npm run deploy
+```
 
-1. Update the Edge Function's `SITE_URL` secret to the public Pages URL.
-2. Test the emailed management link in a private browser window.
+This runs `npm run build && npx wrangler pages deploy dist --project-name=ralvessura`. `SUPABASE_URL` and `SUPABASE_ANON_KEY` are intentionally public browser configuration and are compiled into the static bundle; do not put a service-role key in `.env`, Pages, or Wrangler.
+
+### One-time setup
+
+1. Complete the hosted Supabase and Resend setup above. Before building, ensure the root `.env` contains the production `SUPABASE_URL` and `SUPABASE_ANON_KEY` values.
+2. Authenticate Wrangler in the Cloudflare account that owns `ralv.party`:
+
+   ```bash
+   npx wrangler login
+   ```
+
+3. Create the Pages project once, with `main` as its production branch:
+
+   ```bash
+   npx wrangler pages project create ralvessura --production-branch master
+   ```
+
+4. Publish the first deployment:
+
+   ```bash
+   npm run deploy
+   ```
+
+5. In Cloudflare, open **Workers & Pages → ralvessura → Custom domains → Set up a domain**, enter `ralv.party`, and activate it. Because `ralv.party` is an apex domain, its zone must remain on Cloudflare nameservers. Complete this dashboard flow rather than creating a DNS record manually; Cloudflare creates the required record when the zone is in the same account.
+6. In Supabase, set the `SITE_URL` Edge Function secret to `https://ralv.party`, then redeploy the registration function:
+
+   ```bash
+   npx supabase functions deploy register
+   ```
+
+7. Register a test address and open the received `/gerir/{uuid}` link in a private browser window.
+
+The `deploy` script publishes a production deployment. To publish a preview manually, run `npm run build` followed by `npx wrangler pages deploy dist --project-name=ralvessura --branch=<branch-name>`.
+
+Cloudflare Pages projects created with Direct Upload cannot later be converted to Git-integrated projects. Choose the Direct Upload flow above when using `npm run deploy`; use a separate Pages project if automatic deployments from Git are required.
 
 ## Security model
 
