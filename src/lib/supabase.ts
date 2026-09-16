@@ -14,6 +14,8 @@ export interface Pin {
   id: string;
   name: string;
   address: string;
+  floor_door: string | null;
+  notes: string | null;
   lat: number;
   lng: number;
   date: string; // "2026-10-31"
@@ -27,6 +29,8 @@ export interface PinInput {
   id: string | null; // null creates a new pin
   name: string;
   address: string;
+  floor_door: string;
+  notes: string;
   lat: number;
   lng: number;
   date: string;
@@ -60,6 +64,8 @@ export async function upsertPin(secret: string, pin: PinInput): Promise<void> {
     p_pin_id: pin.id,
     p_name: pin.name,
     p_address: pin.address,
+    p_floor_door: pin.floor_door,
+    p_notes: pin.notes,
     p_lat: pin.lat,
     p_lng: pin.lng,
     p_date: pin.date,
@@ -85,6 +91,8 @@ export function mapError(err: unknown): string {
   if (msg.includes('invalid_times')) return 'A hora de fim tem de ser depois da hora de início.';
   if (msg.includes('invalid_email')) return 'O email não parece válido.';
   if (msg.includes('invalid_name')) return 'O nome não pode estar vazio.';
+  if (msg.includes('invalid_floor_door')) return 'O andar/porta é demasiado longo.';
+  if (msg.includes('invalid_notes')) return 'As notas são demasiado longas.';
   if (msg.includes('email_failed')) return 'Não foi possível enviar o email. Tenta de novo mais tarde.';
   if (msg.includes('register_failed')) return 'Não foi possível concluir o registo. Tenta de novo.';
   if (msg.includes('geocode_failed')) return 'Não foi possível pesquisar a morada. Tenta de novo.';

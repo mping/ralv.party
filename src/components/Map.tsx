@@ -55,12 +55,18 @@ function popupHtml(pin: Pin): string {
     .map((sweet) => `<span class="chip">${escapeHtml(sweetEmoji(sweet))} ${escapeHtml(sweetLabel(sweet))}</span>`)
     .join(' ');
   const dateLine = pin.date === eventDate() ? '' : `<p class="p-date">${escapeHtml(formatDate(pin.date))}</p>`;
+  const floorDoorLine = pin.floor_door
+    ? `<p class="p-addr">🚪 ${escapeHtml(pin.floor_door)}</p>`
+    : '';
+  const notesLine = pin.notes ? `<p class="p-addr">📝 ${escapeHtml(pin.notes)}</p>` : '';
 
   return `
     <div class="pin-popup">
       <h3>${escapeHtml(pin.name)}</h3>
       ${dateLine}
       <p class="p-addr">📍 ${escapeHtml(pin.address)}</p>
+      ${floorDoorLine}
+      ${notesLine}
       <p class="p-time">⏰ ${escapeHtml(formatTime(pin.start_time))} – ${escapeHtml(formatTime(pin.end_time))}</p>
       <div class="chips">${chips}</div>
       <a class="p-dir" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pin.address)}" target="_blank" rel="noreferrer">Como chegar</a>

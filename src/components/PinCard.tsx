@@ -32,6 +32,8 @@ export default function PinCard({ pin, selected = false, onClick = () => {} }: P
         {otherDay && <span className="pin-date">{formatDateShort(pin.date)}</span>}
       </div>
       <p className="addr">📍 {pin.address}</p>
+      {pin.floor_door && <p className="addr">🚪 {pin.floor_door}</p>}
+      {pin.notes && <p className="addr">📝 {pin.notes}</p>}
       <p className="time">
         ⏰ {formatTime(pin.start_time)} – {formatTime(pin.end_time)}
       </p>

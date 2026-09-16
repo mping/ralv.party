@@ -37,6 +37,8 @@ export default function PinForm({
 }: PinFormProps) {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [floorDoor, setFloorDoor] = useState('');
+  const [notes, setNotes] = useState('');
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [date, setDate] = useState(eventDate());
@@ -54,6 +56,8 @@ export default function PinForm({
 
     setName(pin?.name ?? '');
     setAddress(pin?.address ?? '');
+    setFloorDoor(pin?.floor_door ?? '');
+    setNotes(pin?.notes ?? '');
     setDate(pin?.date ?? eventDate());
     setStart(pin?.start_time.slice(0, 5) ?? '18:00');
     setEnd(pin?.end_time.slice(0, 5) ?? '21:00');
@@ -150,6 +154,8 @@ export default function PinForm({
         id: isPin(initial) ? initial.id : null,
         name: name.trim(),
         address: address.trim(),
+        floor_door: floorDoor.trim(),
+        notes: notes.trim(),
         lat,
         lng,
         date,
@@ -204,6 +210,26 @@ export default function PinForm({
           ) : (
             <p className="hint">Ainda sem localização — usa a pesquisa acima.</p>
           )}
+
+          <label>
+            Andar/Porta
+            <input
+              type="text"
+              value={floorDoor}
+              onChange={(event) => setFloorDoor(event.target.value)}
+              maxLength={50}
+              placeholder="Ex.: 3.º Esq."
+            />
+          </label>
+          <label>
+            Notas adicionais
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              maxLength={500}
+              placeholder="Ex.: Toca à campainha do lado esquerdo."
+            />
+          </label>
 
           <div className="row">
             <label>
