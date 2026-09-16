@@ -1,11 +1,19 @@
 <script lang="ts">
-  // Campo de morada com autocomplete Photon.
+  // Address field backed by OpenRouteService autocomplete.
+  import { onDestroy } from 'svelte';
   import { searchAddress, type GeocodeResult } from '../lib/geocode';
 
   let {
     value = '',
+    locating = false,
     onSelect = (_r: GeocodeResult) => {},
-  }: { value?: string; onSelect?: (r: GeocodeResult) => void } = $props();
+    onLocate = () => {},
+  }: {
+    value?: string;
+    locating?: boolean;
+    onSelect?: (r: GeocodeResult) => void;
+    onLocate?: () => void;
+  } = $props();
 
   let query = $state('');
   let typing = $state(false);
@@ -14,7 +22,7 @@
   let searching = $state(false);
   let errorMsg = $state('');
 
-  // Sincroniza a partir do pai (ex.: reverse geocoding) quando o utilizador não está a escrever.
+  // Synchronize parent updates, such as reverse geocoding, while the user is not typing.
   $effect(() => {
     if (!typing && value !== query) query = value;
   });
@@ -25,25 +33,27 @@
   function onInput(): void {
     typing = true;
     clearTimeout(timer);
+    controller?.abort();
     const q = query.trim();
     if (q.length < 3) {
+      searching = false;
       results = [];
       open = false;
       return;
     }
     timer = setTimeout(async () => {
-      controller?.abort();
-      controller = new AbortController();
+      const requestController = new AbortController();
+      controller = requestController;
       searching = true;
       errorMsg = '';
       try {
-        results = await searchAddress(q, controller.signal);
+        results = await searchAddress(q, requestController.signal);
         open = results.length > 0;
       } catch {
-        if (controller.signal.aborted) return;
+        if (requestController.signal.aborted) return;
         errorMsg = 'Não foi possível pesquisar. Tenta de novo.';
       } finally {
-        searching = false;
+        if (controller === requestController) searching = false;
       }
     }, 350);
   }
@@ -67,22 +77,46 @@
 
   function onBlur(): void {
     typing = false;
-    // atraso para deixar o clique na lista registar-se primeiro
+    // Delay closing so a list click can be registered first.
     setTimeout(() => (open = false), 150);
   }
+
+  function locate(): void {
+    typing = false;
+    open = false;
+    results = [];
+    onLocate();
+  }
+
+  onDestroy(() => {
+    clearTimeout(timer);
+    controller?.abort();
+  });
 </script>
 
 <div class="addr-search">
-  <input
-    type="text"
-    placeholder="Ex.: Rua das Flores 12, Lisboa"
-    bind:value={query}
-    oninput={onInput}
-    onkeydown={onKeydown}
-    onfocus={() => results.length > 0 && (open = true)}
-    onblur={onBlur}
-    aria-label="Morada"
-  />
+  <div class="address-input-row">
+    <input
+      type="text"
+      placeholder="Ex.: Rua das Flores 12, Lisboa"
+      bind:value={query}
+      oninput={onInput}
+      onkeydown={onKeydown}
+      onfocus={() => results.length > 0 && (open = true)}
+      onblur={onBlur}
+      aria-label="Morada"
+    />
+    <button
+      class="locate"
+      type="button"
+      onclick={locate}
+      disabled={locating}
+      aria-label={locating ? 'A obter a tua localização' : 'Usar a minha localização'}
+      title="Usar a minha localização"
+    >
+      {locating ? '…' : '⌖'}
+    </button>
+  </div>
   {#if searching}<p class="hint">A pesquisar…</p>{/if}
   {#if open}
     <ul class="results">

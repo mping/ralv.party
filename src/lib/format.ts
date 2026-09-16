@@ -1,7 +1,7 @@
-// Formatação pt-PT de datas/horas e a data do evento (31 de outubro).
+// Format dates and times as pt-PT and provide the October 31 event date.
 
 export function eventDate(): string {
-  // 31 de outubro do ano corrente, em formato yyyy-mm-dd (para <input type="date">).
+  // October 31 of the current year as yyyy-mm-dd for <input type="date">.
   return `${new Date().getFullYear()}-10-31`;
 }
 
@@ -11,7 +11,7 @@ export function formatTime(t: string): string {
 }
 
 export function formatDate(d: string): string {
-  // "2026-10-31" → "sábado, 31 de outubro"
+  // Return a localized long date including the weekday.
   return new Date(`${d}T00:00:00`).toLocaleDateString('pt-PT', {
     weekday: 'long',
     day: 'numeric',
@@ -20,7 +20,7 @@ export function formatDate(d: string): string {
 }
 
 export function formatDateShort(d: string): string {
-  // "2026-10-31" → "31 out"
+  // Return a localized compact date for list cards.
   return new Date(`${d}T00:00:00`).toLocaleDateString('pt-PT', {
     day: 'numeric',
     month: 'short',

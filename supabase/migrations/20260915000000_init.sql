@@ -1,12 +1,12 @@
--- ralvessura — esquema inicial.
+-- Ralvessura initial schema.
 --
--- Modelo de segurança: o id do utilizador É o segredo (ligação mágica /gerir/{uuid}).
--- Por isso `pins.user_id` nunca pode ser legível pelo anon — uma política SELECT
--- pública em `pins` revelaria a ligação de gestão de todos. TODO o acesso passa por
--- RPCs SECURITY DEFINER; acesso direto às tabelas é negado ao anon.
+-- Security model: the user ID is the secret used by the /gerir/{uuid} management link.
+-- Therefore, anon must never read `pins.user_id`: a public SELECT policy on `pins`
+-- would reveal every management link. All access uses SECURITY DEFINER RPCs, and
+-- direct table access is denied to anon.
 
 create table public.users (
-  id         uuid primary key default gen_random_uuid(), -- O SEGREDO
+  id         uuid primary key default gen_random_uuid(), -- Management secret
   name       text not null check (char_length(name) between 1 and 100),
   email      text not null unique check (email ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
   created_at timestamptz not null default now()
@@ -33,7 +33,7 @@ alter table public.pins enable row level security;
 revoke all on table public.pins from anon, authenticated;
 create index pins_date_idx on public.pins (date);
 
--- Leitura pública para o mapa: pins SEM user_id, só do ano corrente em diante.
+-- Public map data excludes user_id and pins from previous years.
 create or replace function public.get_public_pins()
 returns table (
   id uuid,
@@ -58,8 +58,8 @@ as $$
   order by date, start_time;
 $$;
 
--- Página de gestão: verifica o segredo e devolve o utilizador + os seus pins.
--- Devolve sempre exatamente uma linha (jsonb).
+-- Management page data verifies the secret and returns the user with their pins.
+-- Always returns exactly one jsonb value.
 create or replace function public.get_my_data(p_secret uuid)
 returns jsonb
 language sql
@@ -94,11 +94,11 @@ as $$
   ), '{"found": false}'::jsonb);
 $$;
 
--- Adicionar ou editar um pin (p_pin_id null = novo). A posse é verificada pelo segredo.
--- "utilizador inexistente" e "pin de outro dono" dão o mesmo erro: invalid_secret.
+-- Add or edit a pin (a null p_pin_id creates one). The secret verifies ownership.
+-- Missing users and pins owned by another user both raise invalid_secret.
 create or replace function public.upsert_pin(
   p_secret uuid,
-  p_pin_id uuid default null,
+  p_pin_id uuid,
   p_name text,
   p_address text,
   p_lat double precision,
@@ -151,7 +151,7 @@ begin
 end;
 $$;
 
--- Remover um pin do próprio utilizador.
+-- Delete a pin owned by the current secret holder.
 create or replace function public.delete_pin(p_secret uuid, p_pin_id uuid)
 returns boolean
 language plpgsql
@@ -171,7 +171,7 @@ begin
 end;
 $$;
 
--- Só o anon (chave pública) executa as RPCs; sem grants diretos nas tabelas.
+-- Only anon may execute these RPCs; no direct table privileges are granted.
 revoke execute on function public.get_public_pins() from public;
 revoke execute on function public.get_my_data(uuid) from public;
 revoke execute on function public.upsert_pin(uuid, uuid, text, text, double precision, double precision, date, time, time, text[]) from public;

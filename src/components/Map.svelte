@@ -1,7 +1,7 @@
 <script lang="ts">
-  // Wrapper do Leaflet. A instância do mapa NUNCA entra em $state (Svelte 5):
-  // criamos no onMount, removemos no onDestroy, e sincronizamos os markers num $effect
-  // que também depende de `ready`.
+  // Leaflet wrapper. Never put the map instance in $state (Svelte 5): create it
+  // in onMount, remove it in onDestroy, and synchronize markers in an $effect
+  // that also depends on `ready`.
   import { onMount, onDestroy } from 'svelte';
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
@@ -9,16 +9,27 @@
   import { eventDate, formatDate, formatTime } from '../lib/format';
   import { sweetEmoji, sweetLabel } from '../lib/sweets';
 
+  // 38°45'01.3"N 9°08'50.8"W
+  const DEFAULT_CENTER = { lat: 38.7503611111, lng: -9.1474444444 };
+
+  type MapCenter = { lat: number; lng: number };
+
   let {
     pins = [],
     mode = 'view',
     focus = null,
+    initialCenter = DEFAULT_CENTER,
+    center = null,
+    zoom = 7,
     onSelect = (_pin: Pin) => {},
     onMapClick = (_ll: { lat: number; lng: number }) => {},
   }: {
     pins?: Pin[];
     mode?: 'view' | 'edit';
     focus?: { lat: number; lng: number; n: number } | null;
+    initialCenter?: MapCenter;
+    center?: MapCenter | null;
+    zoom?: number;
     onSelect?: (pin: Pin) => void;
     onMapClick?: (ll: { lat: number; lng: number }) => void;
   } = $props();
@@ -28,11 +39,11 @@
   let map: L.Map | null = null;
   let markersLayer: L.LayerGroup | null = null;
 
-  const TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
   const ATTRIBUTION =
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
 
-  // Abóbora SVG como divIcon (sem plugin de ícones).
+  // Render the pumpkin SVG as a divIcon without an icon plugin.
   const pumpkinIcon = L.divIcon({
     className: 'pumpkin-marker',
     html: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
@@ -71,8 +82,8 @@
   onMount(() => {
     if (!mapEl) return;
     map = L.map(mapEl, {
-      center: [39.7, -8.0],
-      zoom: 7,
+      center: [initialCenter.lat, initialCenter.lng],
+      zoom,
       minZoom: 6,
       zoomControl: false,
     });
@@ -93,7 +104,7 @@
     markersLayer = null;
   });
 
-  // Sincroniza os markers sempre que `pins` mudar (ou o mapa ficar pronto).
+  // Synchronize markers whenever `pins` changes or the map becomes ready.
   $effect(() => {
     const layer = markersLayer;
     if (!ready || !layer) return;
@@ -106,7 +117,16 @@
     }
   });
 
-  // Fly-to quando o utilizador clica num card da lista.
+  // Recenter when a parent supplies a new location, such as the browser location.
+  $effect(() => {
+    if (!ready || !map || !center) return;
+    const target = L.latLng(center.lat, center.lng);
+    if (!map.getCenter().equals(target)) {
+      map.flyTo(target, map.getZoom(), { duration: 0.8 });
+    }
+  });
+
+  // Fly to a pin when the user selects its list card.
   $effect(() => {
     if (ready && map && focus) {
       map.flyTo([focus.lat, focus.lng], Math.max(map.getZoom(), 15), { duration: 0.8 });

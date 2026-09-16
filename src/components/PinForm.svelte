@@ -28,12 +28,13 @@
   let date = $state(eventDate());
   let start = $state('18:00');
   let end = $state('21:00');
-  let sweets = $state<string[]>(['chocolates']);
+  let sweets = $state<string[]>(['chocolate']);
   let errorMsg = $state('');
   let saving = $state(false);
+  let locating = $state(false);
 
-  // O modal só é montado ao abrir, por isso hidratar os campos aqui é seguro.
-  // (ler a prop dentro de closures também evita capturar só o valor inicial.)
+  // The modal mounts only when opened, so hydrating its fields here is safe.
+  // Reading the prop inside closures also avoids capturing only its initial value.
   onMount(async () => {
     if (isEdit()) {
       const pin = initial as Pin;
@@ -48,19 +49,55 @@
       lat = initial.lat;
       lng = initial.lng;
     }
-    // Se o pin veio de um clique no mapa, procura a morada por reverse geocoding.
+    // Reverse geocode pins created by clicking on the map.
     if (lat !== null && lng !== null && !address) {
       try {
         const found = await reverseGeocode(lat, lng);
         if (found) address = found;
       } catch {
-        // sem morada automática; o utilizador pode escrevê-la
+        // Leave the address empty so the user can enter it manually.
       }
     }
   });
 
   function toggleSweet(slug: string): void {
     sweets = sweets.includes(slug) ? sweets.filter((s) => s !== slug) : [...sweets, slug];
+  }
+
+  function getCurrentPosition(): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        maximumAge: 60_000,
+        timeout: 10_000,
+      });
+    });
+  }
+
+  async function locateAddress(): Promise<void> {
+    errorMsg = '';
+    if (!('geolocation' in navigator)) {
+      errorMsg = 'A localização não é suportada neste navegador.';
+      return;
+    }
+
+    locating = true;
+    try {
+      const position = await getCurrentPosition();
+      lat = position.coords.latitude;
+      lng = position.coords.longitude;
+      address = '';
+      const found = await reverseGeocode(lat, lng);
+      if (!found) {
+        errorMsg = 'Não foi possível encontrar a morada desta localização.';
+        return;
+      }
+      address = found;
+    } catch {
+      errorMsg = 'Não foi possível usar a tua localização. Confirma a permissão e tenta de novo.';
+    } finally {
+      locating = false;
+    }
   }
 
   function fail(msg: string): false {
@@ -96,7 +133,7 @@
         end_time: `${end}:00`,
         sweets,
       });
-      // sucesso: o pai fecha o modal e desmonta este componente
+      // On success, the parent closes the modal and unmounts this component.
     } catch (err) {
       errorMsg = mapError(err);
       saving = false;
@@ -119,11 +156,13 @@
         Morada
         <AddressSearch
           value={address}
+          {locating}
           onSelect={(r) => {
             address = r.label;
             lat = r.lat;
             lng = r.lng;
           }}
+          onLocate={() => void locateAddress()}
         />
       </label>
       {#if lat !== null && lng !== null}

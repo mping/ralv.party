@@ -64,7 +64,7 @@ header {
   background: rgba(20, 9, 26, 0.92);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(6px);
-  z-index: 500; /* acima do Leaflet */
+  z-index: 500; /* Keep the header above Leaflet controls. */
 }
 
 .brand {
@@ -119,7 +119,7 @@ header {
   font-size: 0.9rem;
 }
 
-/* ---------- botões ---------- */
+/* ---------- buttons ---------- */
 .cta {
   display: inline-block;
   background: var(--accent);
@@ -167,7 +167,7 @@ header {
   background: rgba(255, 92, 92, 0.12);
 }
 
-/* ---------- main / mapa ---------- */
+/* ---------- main / map ---------- */
 main {
   flex: 1;
   min-height: 0;
@@ -183,7 +183,7 @@ main {
   font: inherit;
 }
 
-/* popups do Leaflet no tema escuro */
+/* Leaflet popups using the dark theme. */
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   background: var(--card);
@@ -233,7 +233,7 @@ main {
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
 }
 
-/* ---------- lista ---------- */
+/* ---------- list ---------- */
 main.list-mode {
   overflow-y: auto;
   padding: 1.25rem;
@@ -302,7 +302,7 @@ main.list-mode {
   font-size: 0.8rem;
 }
 
-/* ---------- gerir ---------- */
+/* ---------- management ---------- */
 .manage-grid {
   display: grid;
   grid-template-columns: 1fr 360px;
@@ -363,7 +363,7 @@ main.list-mode {
   color: var(--muted);
 }
 
-/* ---------- modais ---------- */
+/* ---------- modals ---------- */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -381,7 +381,7 @@ main.list-mode {
   border-radius: 16px;
   padding: 1.5rem;
   width: 100%;
-  max-width: 500px;
+  max-width: 620px;
   box-shadow: var(--shadow);
   max-height: calc(100dvh - 2.5rem);
   overflow-y: auto;
@@ -477,9 +477,45 @@ fieldset.sweets legend {
   accent-color: var(--accent);
 }
 
-/* ---------- pesquisa de morada ---------- */
+/* ---------- address search ---------- */
 .addr-search {
   position: relative;
+  width: 100%;
+}
+.address-input-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+}
+.addr-search input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+.addr-search .locate {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.addr-search .locate:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(255, 122, 26, 0.14);
+}
+.addr-search .locate:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.addr-search .locate:disabled {
+  cursor: wait;
+  color: var(--muted);
 }
 .addr-search .hint {
   font-size: 0.75rem;
@@ -511,7 +547,7 @@ fieldset.sweets legend {
   background: rgba(255, 122, 26, 0.14);
 }
 
-/* ---------- estados ---------- */
+/* ---------- states ---------- */
 .status {
   color: var(--muted);
   text-align: center;

@@ -1,4 +1,4 @@
-# ralvessura — "Doces ou Travessuras" (mapa de Halloween, pt-PT)
+# ralvessura — "Doces ou Travessuras" (Halloween map, pt-PT)
 
 ## Context
 
@@ -27,7 +27,7 @@ Browser (Svelte 5 SPA, static on Cloudflare Pages)
  │      4. email link via Resend
  │
  ├─ photon.komoot.io  — address autocomplete + reverse geocoding (OSM data, CORS)
- └─ CARTO Dark Matter tiles (free, fits Halloween dark theme)
+ └─ OpenStreetMap standard tiles (keyless, unwatermarked)
 ```
 
 **Security model (accepted by design):** `users.id` uuid is the secret; possession of `/gerir/{uuid}` = full control of that user's pins. 122-bit random uuids are unguessable; no sessions, no expiry (per README "can be accessed at any time"). Critical invariant: `pins.user_id` must never be readable by anon — a public SELECT policy on `pins` would leak everyone's manage link. All reads/writes go through SECURITY DEFINER functions.
@@ -110,7 +110,7 @@ Secrets: `TURNSTILE_SECRET`, `RESEND_API_KEY`, `SITE_URL` (the three `SUPABASE_*
 ## Data model details
 
 - **Timespan**: `date` defaults to Oct 31 of current year (`EVENT_DATE()` in format.ts; date input allows e.g. Oct 30 parties). `start_time`/`end_time` are plain `time` — Portugal is UTC+0 on Oct 31 (DST ended), so display `"18:00 – 21:00"` via `toLocaleTimeString('pt-PT', ...)`, no TZ conversion anywhere. Homepage defaults to `EVENT_DATE` filter + small dropdown of distinct dates when others exist.
-- **Sweets** (`sweets.ts`, text[] slugs): `chocolates`, `gomas`, `rebucados`, `bolachas`, `salgados` (Snacks salgados), `outros` — checkbox chips.
+- **Sweets** (`sweets.ts`, text[] slugs): `chocolate`, `gummies`, `hard_candy`, `cookies`, `savory_snacks`, `other` — checkbox chips with pt-PT labels.
 
 ## Frontend
 
@@ -119,7 +119,7 @@ Secrets: `TURNSTILE_SECRET`, `RESEND_API_KEY`, `SITE_URL` (the three `SUPABASE_*
   /assets/*  /assets/:splat  200
   /*         /index.html     200
   ```
-- **Map.svelte**: Leaflet 1.9.4 used directly — `L.map` in `onMount`, instance in a plain (non-reactive) `let`, `map.remove()` on destroy, markers synced in a separate `$effect` watching the `pins` prop. **Never put the map in `$state`** (Svelte 5 gotcha). Tiles: CARTO Dark Matter `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png`, attribution `© OpenStreetMap contributors © CARTO`; Portugal center `[39.7, -8.0]`, zoom 7. Markers: custom pumpkin SVG `L.divIcon` (~2KB). No clustering (~150 pins scale). Home popup: name, address, timeframe, sweets chips, "Como chegar" link (`google.com/maps/dir/?api=1&destination=lat,lng`). Manage mode: map click → draft marker → opens PinForm prefilled with reverse-geocoded address.
+- **Map.svelte**: Leaflet 1.9.4 used directly — `L.map` in `onMount`, instance in a plain (non-reactive) `let`, `map.remove()` on destroy, markers synced in a separate `$effect` watching the `pins` prop. **Never put the map in `$state`** (Svelte 5 gotcha). Tiles: standard OpenStreetMap `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, attribution `© OpenStreetMap contributors`; Portugal center `[39.7, -8.0]`, zoom 7. Markers: custom pumpkin SVG `L.divIcon` (~2KB). No clustering (~150 pins scale). Home popup: name, address, timeframe, sweets chips, "Como chegar" link (`google.com/maps/dir/?api=1&destination=lat,lng`). Manage mode: map click → draft marker → opens PinForm prefilled with reverse-geocoded address.
 - **Geocoding**: **Photon, not client-side Nominatim** — Nominatim's policy explicitly forbids browser autocomplete (no User-Agent header possible, 1 req/s aggregate limit). Photon (`photon.komoot.io/api/?q=…&limit=6&lang=pt`, `/reverse`) is same OSM data, CORS-enabled, autocomplete-native. Debounce ~350ms, min 3 chars, `AbortController` cancel, module-level cache.
 - **Home.svelte**: full-viewport map; floating header (logo, CTA "Registar a minha casa", toggle "Mapa | Lista"); list = PinCards sorted by date/start_time with name, address, timeframe, sweets chips; click card → flyTo pin; empty state "Ainda não há casas com doces na tua zona. Sê o primeiro a adicionar a tua!"; footer attribution.
 - **RegisterModal.svelte**: "Nome", "Email", Turnstile widget (dark theme, `language: 'pt-PT'`, site key from `VITE_TURNSTILE_SITE_KEY`), submit "Receber a minha ligação" → `functions.invoke('register', …)` → success "Verifica o teu email — enviámos-te uma ligação mágica. Guarda-a…". Map error codes to pt strings.
@@ -129,10 +129,10 @@ Secrets: `TURNSTILE_SECRET`, `RESEND_API_KEY`, `SITE_URL` (the three `SUPABASE_*
 
 ## Config / env
 
-`.env.example` (committed; only `VITE_*` — never the Turnstile secret or Resend key):
+`.env.example` (committed; only public browser values — never the Turnstile secret or Resend key):
 ```
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_ANON_KEY=eyJ...
 VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA   # test key for local dev
 ```
 Edge Function secrets (never committed): `TURNSTILE_SECRET`, `RESEND_API_KEY`, `SITE_URL` (e.g. `https://ralvessura.pages.dev`; `http://localhost:5173` in dev).
@@ -152,7 +152,7 @@ Edge Function secrets (never committed): `TURNSTILE_SECRET`, `RESEND_API_KEY`, `
 ## Deployment
 
 - **Supabase**: `supabase link --project-ref <ref>` → `supabase db push`; Dashboard → Edge Functions → add the 3 secrets; `supabase functions deploy register`.
-- **Cloudflare Pages**: create project from GitHub repo; build `npm run build`, output `dist` (`_redirects` in `public/` is copied automatically); set build env vars `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TURNSTILE_SITE_KEY` (production key) — note Vite env is baked at build time, redeploy after changes. Add the Pages domain to the Turnstile widget hostnames; verify Resend domain.
+- **Cloudflare Pages**: create project from GitHub repo; build `npm run build`, output `dist` (`_redirects` in `public/` is copied automatically); set build env vars `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `VITE_TURNSTILE_SITE_KEY` (production key) — note Vite env is baked at build time, redeploy after changes. Add the Pages domain to the Turnstile widget hostnames; verify Resend domain.
 
 ## Verification
 

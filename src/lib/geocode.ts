@@ -1,6 +1,7 @@
-// Geocodificação via Photon (dados do OpenStreetMap).
-// Usamos o Photon em vez do Nominatim diretamente: a política de utilização do
-// Nominatim proíbe autocomplete no browser (sem User-Agent, limite agregado de 1 req/s).
+// Geocode through the OpenRouteService-backed Edge Function. Keeping the API key
+// in the function means it is never bundled into the browser application.
+
+import { supabase } from './supabase';
 
 export interface GeocodeResult {
   label: string;
@@ -8,24 +9,29 @@ export interface GeocodeResult {
   lng: number;
 }
 
-interface PhotonFeature {
-  geometry: { coordinates: [number, number] };
-  properties: {
-    name?: string;
-    street?: string;
-    housenumber?: string;
-    city?: string;
-    postcode?: string;
-  };
+interface GeocodeResponse {
+  results?: GeocodeResult[];
+  error?: string;
 }
 
 const searchCache = new Map<string, GeocodeResult[]>();
 const reverseCache = new Map<string, string>();
 
-function buildLabel(p: PhotonFeature['properties'] | undefined): string {
-  if (!p) return '';
-  const street = p.street ? (p.housenumber ? `${p.street} ${p.housenumber}` : p.street) : p.name;
-  return [street, p.city, p.postcode].filter(Boolean).join(', ');
+async function requestGeocode(body: Record<string, unknown>, signal?: AbortSignal): Promise<GeocodeResult[]> {
+  const { data, error } = await supabase.functions.invoke<GeocodeResponse>('geocode', {
+    body,
+    signal,
+  });
+  if (error) {
+    const context = (error as { context?: unknown }).context;
+    const responseError =
+      typeof context === 'object' && context !== null
+        ? (context as GeocodeResponse).error
+        : undefined;
+    throw new Error(responseError ?? 'geocode_failed');
+  }
+  if (data?.error) throw new Error(data.error);
+  return data?.results ?? [];
 }
 
 export async function searchAddress(
@@ -36,18 +42,7 @@ export async function searchAddress(
   const cached = searchCache.get(q);
   if (cached) return cached;
 
-  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=pt`;
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error('geocode_failed');
-
-  const data = (await res.json()) as { features: PhotonFeature[] };
-  const results = (data.features ?? []).map((f) => ({
-    label:
-      buildLabel(f.properties) ||
-      `${f.geometry.coordinates[1].toFixed(5)}, ${f.geometry.coordinates[0].toFixed(5)}`,
-    lat: f.geometry.coordinates[1],
-    lng: f.geometry.coordinates[0],
-  }));
+  const results = await requestGeocode({ type: 'autocomplete', query: q }, signal);
 
   searchCache.set(q, results);
   return results;
@@ -58,12 +53,8 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   const cached = reverseCache.get(key);
   if (cached) return cached;
 
-  const url = `https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}&lang=pt`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('geocode_failed');
-
-  const data = (await res.json()) as { features: PhotonFeature[] };
-  const label = buildLabel(data.features?.[0]?.properties);
+  const [result] = await requestGeocode({ type: 'reverse', lat, lng });
+  const label = result?.label ?? '';
   reverseCache.set(key, label);
   return label;
 }

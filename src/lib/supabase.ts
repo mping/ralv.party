@@ -1,11 +1,11 @@
-// Cliente Supabase + wrappers tipados para as RPCs definidas na migração.
+// Supabase client and typed wrappers for RPCs defined by the migrations.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const url = import.meta.env.SUPABASE_URL as string | undefined;
+const anonKey = import.meta.env.SUPABASE_ANON_KEY as string | undefined;
 
 if (!url || !anonKey) {
-  throw new Error('Faltam VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY no .env');
+  throw new Error('Missing SUPABASE_URL / SUPABASE_ANON_KEY in .env');
 }
 
 export const supabase: SupabaseClient = createClient(url, anonKey);
@@ -24,7 +24,7 @@ export interface Pin {
 }
 
 export interface PinInput {
-  id: string | null; // null = novo pin
+  id: string | null; // null creates a new pin
   name: string;
   address: string;
   lat: number;
@@ -78,12 +78,11 @@ export async function deletePin(secret: string, pinId: string): Promise<void> {
   if (error) throw error;
 }
 
-// Traduz mensagens de erro das RPCs/função edge para pt-PT.
+// Translate RPC and Edge Function errors into user-facing pt-PT messages.
 export function mapError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   if (msg.includes('invalid_secret')) return 'Ligação inválida ou desconhecida.';
   if (msg.includes('invalid_times')) return 'A hora de fim tem de ser depois da hora de início.';
-  if (msg.includes('turnstile_failed')) return 'Falha na verificação anti-robô. Tenta de novo.';
   if (msg.includes('invalid_email')) return 'O email não parece válido.';
   if (msg.includes('invalid_name')) return 'O nome não pode estar vazio.';
   if (msg.includes('email_failed')) return 'Não foi possível enviar o email. Tenta de novo mais tarde.';
@@ -98,16 +97,12 @@ interface RegisterResult {
   error?: string;
 }
 
-export async function sendMagicLink(
-  name: string,
-  email: string,
-  turnstileToken: string,
-): Promise<void> {
+export async function sendMagicLink(name: string, email: string): Promise<void> {
   const { data, error } = await supabase.functions.invoke<RegisterResult>('register', {
-    body: { name, email, turnstileToken },
+    body: { name, email },
   });
   if (error) {
-    // A função edge devolve { error: "<código>" } em respostas 4xx/5xx.
+    // The Edge Function returns { error: "<code>" } in 4xx/5xx responses.
     const ctx = (error as { context?: unknown }).context;
     const bodyError =
       typeof ctx === 'object' && ctx !== null ? (ctx as RegisterResult).error : undefined;

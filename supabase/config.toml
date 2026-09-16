@@ -209,7 +209,7 @@ token_verifications = 30
 # Number of Web3 logins that can be made in a 5 minute interval per IP address.
 web3 = 30
 
-# Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
+# CAPTCHA is not configured for Supabase Auth.
 # [auth.captcha]
 # enabled = true
 # provider = "hcaptcha"
@@ -414,6 +414,10 @@ enabled = true
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
 
-# O registo é um endpoint público protegido por Turnstile (não há JWT).
+# Registration is a public endpoint, so no JWT is required.
 [functions.register]
+verify_jwt = false
+
+# Geocoding is called by anonymous visitors while they create a pin.
+[functions.geocode]
 verify_jwt = false

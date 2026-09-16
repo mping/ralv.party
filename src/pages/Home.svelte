@@ -88,9 +88,7 @@
   <footer>
     <span>
       Dados geográficos ©
-      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>
-      · ©
-      <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>
     </span>
     <span>Feito com 🎃 em Portugal</span>
   </footer>

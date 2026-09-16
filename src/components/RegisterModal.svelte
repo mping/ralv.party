@@ -1,13 +1,10 @@
 <script lang="ts">
   import { sendMagicLink, mapError } from '../lib/supabase';
-  import Turnstile from './Turnstile.svelte';
 
   let { onClose = () => {} }: { onClose?: () => void } = $props();
 
   let name = $state('');
   let email = $state('');
-  let turnstileToken = $state<string | null>(null);
-  let turnstileReset = $state(0);
   let status = $state<'idle' | 'sending' | 'success' | 'error'>('idle');
   let errorMsg = $state('');
 
@@ -19,19 +16,11 @@
       status = 'error';
       return;
     }
-    if (!turnstileToken) {
-      errorMsg = 'Confirma que não és um robô.';
-      status = 'error';
-      return;
-    }
     status = 'sending';
     try {
-      await sendMagicLink(name.trim(), email.trim(), turnstileToken);
+      await sendMagicLink(name.trim(), email.trim());
       status = 'success';
     } catch (err) {
-      // O token Turnstile é de utilização única: recria o widget para a próxima tentativa.
-      turnstileToken = null;
-      turnstileReset += 1;
       errorMsg = mapError(err);
       status = 'error';
     }
@@ -67,9 +56,6 @@
           Email
           <input type="email" bind:value={email} placeholder="nome@exemplo.pt" required />
         </label>
-        {#key turnstileReset}
-          <Turnstile onToken={(t) => (turnstileToken = t)} />
-        {/key}
         {#if errorMsg}<p class="error" role="alert">{errorMsg}</p>{/if}
         <button class="cta" type="submit" disabled={status === 'sending'}>
           {status === 'sending' ? 'A enviar…' : 'Receber a minha ligação'}

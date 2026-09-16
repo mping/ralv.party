@@ -23,6 +23,7 @@
   let formOpen = $state(false);
   let editing = $state<Pin | { lat: number; lng: number } | null>(null);
   let focus = $state<{ lat: number; lng: number; n: number } | null>(null);
+  let userLocation = $state<{ lat: number; lng: number } | null>(null);
 
   async function fetchData(): Promise<void> {
     const data = await getMyData(uuid);
@@ -33,7 +34,28 @@
     }
   }
 
+  function requestUserLocation(): void {
+    if (!('geolocation' in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        userLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+      },
+      () => {
+        // Keeping the default map center is the expected fallback when declined or unavailable.
+      },
+      {
+        enableHighAccuracy: false,
+        maximumAge: 300_000,
+        timeout: 10_000,
+      },
+    );
+  }
+
   onMount(async () => {
+    requestUserLocation();
     try {
       await fetchData();
     } catch (err) {
@@ -50,7 +72,7 @@
 
   async function save(pin: PinInput): Promise<void> {
     await upsertPin(uuid, pin);
-    await fetchData(); // atualiza a lista (erros propagam para o PinForm)
+    await fetchData(); // Refresh the list; errors propagate to PinForm.
     formOpen = false;
     editing = null;
   }
@@ -100,7 +122,13 @@
   {:else}
     <main class="manage-grid">
       <div class="map-col">
-        <Map pins={pins} mode="edit" {focus} onMapClick={(ll) => openForm(ll)} />
+        <Map
+          pins={pins}
+          mode="edit"
+          center={userLocation}
+          {focus}
+          onMapClick={(ll) => openForm(ll)}
+        />
       </div>
       <aside class="my-pins">
         <h2>Olá, {userName}! 👋</h2>

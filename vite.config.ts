@@ -1,7 +1,17 @@
-import { svelte } from '@sveltejs/vite-plugin-svelte'
-import { defineConfig } from 'vite'
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { defineConfig, loadEnv } from 'vite';
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [svelte()],
-})
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'SUPABASE_');
+
+  return {
+    plugins: [svelte()],
+    // Expose only the two public browser values. Using envPrefix: 'SUPABASE_'
+    // would also bundle a service-role key if one were added by mistake.
+    define: {
+      'import.meta.env.SUPABASE_URL': JSON.stringify(env.SUPABASE_URL ?? ''),
+      'import.meta.env.SUPABASE_ANON_KEY': JSON.stringify(env.SUPABASE_ANON_KEY ?? ''),
+    },
+  }
+});

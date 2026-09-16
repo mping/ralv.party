@@ -1,9 +1,9 @@
-// Registo: valida o input, verifica o Turnstile (o segredo nunca sai do servidor),
-// cria/reutiliza o utilizador e envia a ligação mágica por email (Resend).
+// Registration validates input, creates or reuses a user, and emails the
+// management link through Resend.
 //
-// Segredos necessários (supabase secrets set):
-//   TURNSTILE_SECRET, RESEND_API_KEY, FROM_EMAIL, SITE_URL
-// (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY são injetados automaticamente.)
+// Required secrets (supabase secrets set):
+//   RESEND_API_KEY, FROM_EMAIL, SITE_URL
+// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected automatically.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -37,28 +37,11 @@ Deno.serve(async (req) => {
 
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : '';
 
   if (name.length < 1 || name.length > 100) return json({ error: 'invalid_name' }, 400);
   if (!EMAIL_RE.test(email)) return json({ error: 'invalid_email' }, 400);
-  if (!turnstileToken) return json({ error: 'turnstile_failed' }, 403);
 
-  // 1) Verificação Turnstile.
-  const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      secret: Deno.env.get('TURNSTILE_SECRET') ?? '',
-      response: turnstileToken,
-      ...(req.headers.get('cf-connecting-ip')
-        ? { remoteip: req.headers.get('cf-connecting-ip')! }
-        : {}),
-    }),
-  });
-  const verify = (await verifyRes.json()) as { success?: boolean };
-  if (!verify.success) return json({ error: 'turnstile_failed' }, 403);
-
-  // 2) Utilizador: reutiliza o mesmo uuid em re-registos (ligação idempotente).
+  // 1) Reuse the UUID when an email registers again to keep the link idempotent.
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -76,7 +59,7 @@ Deno.serve(async (req) => {
       .from('users')
       .insert({ id: userId, name, email });
     if (insertError) {
-      // Corrida: outra chamada registou o mesmo email entretanto — reutiliza esse id.
+      // Another request registered the same email concurrently; reuse its ID.
       const { data: raced } = await supabase
         .from('users')
         .select('id')
@@ -87,7 +70,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 3) Email com a ligação mágica.
+  // 2) Email the management link.
   const siteUrl = (Deno.env.get('SITE_URL') ?? 'http://localhost:5173').replace(/\/+$/, '');
   const fromEmail = Deno.env.get('FROM_EMAIL') ?? 'onboarding@resend.dev';
   const link = `${siteUrl}/gerir/${userId}`;

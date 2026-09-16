@@ -1,5 +1,5 @@
-// Router minimalista (2 rotas): "/" e "/gerir/{uuid}".
-// Ficheiro .svelte.ts para poder usar runes no estado do módulo.
+// Minimal two-route router for "/" and "/gerir/{uuid}".
+// The .svelte.ts extension allows runes in module state.
 
 export type Route = { name: 'home' } | { name: 'manage'; uuid: string };
 
