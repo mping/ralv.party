@@ -265,8 +265,8 @@ Use a different value from production.
 | --- | --- |
 | "A administração não está configurada." | `ADMIN_PASSWORD` is unset or shorter than 32 characters. |
 | "Palavra-passe inválida." | The password does not match the secret. |
-| "Não foi possível ligar ao servidor." | The browser blocked the request because `SITE_URL` does not match the page's origin, or the network is down. |
-| "Algo correu mal. Tenta de novo mais tarde." | The `admin` function is not deployed (check `npx supabase functions list`) or failed; check its logs in the Supabase Dashboard. |
+| "Não foi possível ligar ao servidor." (the browser console shows a CORS error) | The `admin` function is not deployed: the gateway's 404 preflight response lacks the needed CORS headers. Check `npx supabase functions list`. Otherwise, `SITE_URL` does not match the page's origin, or the network is down. |
+| "Algo correu mal. Tenta de novo mais tarde." | The function failed; check its logs in the Supabase Dashboard. |
 
 ## Security model
 
