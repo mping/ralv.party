@@ -363,6 +363,53 @@ main.list-mode {
   color: var(--muted);
 }
 
+/* ---------- admin ---------- */
+.admin-login {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+.admin-login h2,
+.admin-login p {
+  margin: 0;
+}
+.admin-login input {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.95rem;
+}
+.admin-login input:focus {
+  outline: 2px solid var(--accent);
+  border-color: transparent;
+}
+.admin-user {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+}
+.admin-user-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.admin-user-head .hint {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+}
+.admin-user .own-list {
+  margin-top: 0.8rem;
+}
+.admin-user > .hint {
+  margin: 0.6rem 0 0;
+}
+
 /* ---------- modals ---------- */
 .modal-overlay {
   position: fixed;

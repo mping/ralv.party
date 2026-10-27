@@ -1,5 +1,5 @@
 // Supabase client and typed wrappers for RPCs defined by the migrations.
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
 const url = import.meta.env.SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.SUPABASE_ANON_KEY as string | undefined;
@@ -96,6 +96,11 @@ export function mapError(err: unknown): string {
   if (msg.includes('email_failed')) return 'Não foi possível enviar o email. Tenta de novo mais tarde.';
   if (msg.includes('register_failed')) return 'Não foi possível concluir o registo. Tenta de novo.';
   if (msg.includes('geocode_failed')) return 'Não foi possível pesquisar a morada. Tenta de novo.';
+  if (msg.includes('unauthorized')) return 'Palavra-passe inválida.';
+  if (msg.includes('admin_disabled')) return 'A administração não está configurada.';
+  if (msg.includes('not_found')) return 'Já não existe. Atualiza a página.';
+  if (msg.includes('invalid_pin')) return 'Os dados do pin não são válidos.';
+  if (msg.includes('admin_failed')) return 'A operação falhou. Tenta de novo.';
   if (msg.includes('fetch') || msg.includes('Failed')) return 'Não foi possível ligar ao servidor. Tenta de novo.';
   return 'Algo correu mal. Tenta de novo mais tarde.';
 }
@@ -118,4 +123,47 @@ export async function sendMagicLink(name: string, email: string): Promise<void> 
     throw error;
   }
   if (data?.error) throw new Error(data.error);
+}
+
+export interface AdminUser {
+  name: string;
+  email: string;
+  created_at: string;
+  pins: Pin[];
+}
+
+// The admin Edge Function checks the password from this header on every request.
+async function invokeAdmin<T>(password: string, body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke<T>('admin', {
+    body,
+    headers: { 'x-admin-password': password },
+  });
+  if (error) {
+    // For HTTP errors, context is the Response carrying { error: "<code>" }.
+    if (error instanceof FunctionsHttpError) {
+      const payload = (await (error.context as Response).json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (payload?.error) throw new Error(payload.error);
+    }
+    throw error;
+  }
+  return data as T;
+}
+
+export async function adminList(password: string): Promise<AdminUser[]> {
+  const data = await invokeAdmin<{ users: AdminUser[] }>(password, { action: 'list' });
+  return data.users ?? [];
+}
+
+export async function adminUpdatePin(password: string, pin: PinInput): Promise<void> {
+  await invokeAdmin(password, { action: 'update_pin', pin });
+}
+
+export async function adminDeletePin(password: string, pinId: string): Promise<void> {
+  await invokeAdmin(password, { action: 'delete_pin', pin_id: pinId });
+}
+
+export async function adminDeleteUser(password: string, email: string): Promise<void> {
+  await invokeAdmin(password, { action: 'delete_user', email });
 }

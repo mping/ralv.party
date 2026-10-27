@@ -417,3 +417,7 @@ enabled = true
 # Registration is a public endpoint, so no JWT is required.
 [functions.register]
 verify_jwt = false
+
+# Admin access is gated inside the function by the ADMIN_PASSWORD secret.
+[functions.admin]
+verify_jwt = false
