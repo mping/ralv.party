@@ -28,3 +28,4 @@ supabase/functions/.env
 *.njsproj
 *.sln
 *.sw?
+.prod.env
