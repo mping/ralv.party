@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 
-export type Route = { name: 'home' } | { name: 'manage'; uuid: string } | { name: 'admin' };
+export type Route =
+  | { name: 'home' }
+  | { name: 'manage'; uuid: string }
+  | { name: 'admin' }
+  | { name: 'links' };
 
 function parse(path: string): Route {
   if (/^\/admin\/?$/.test(path)) return { name: 'admin' };
+  if (/^\/ligacoes\/?$/.test(path)) return { name: 'links' };
   const match = path.match(/^\/gerir\/([0-9a-f-]+)$/i);
   return match ? { name: 'manage', uuid: match[1] } : { name: 'home' };
 }

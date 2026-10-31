@@ -97,6 +97,9 @@ export default function Home() {
           <button className="cta" type="button" onClick={() => setRegisterOpen(true)}>
             Registar a minha casa
           </button>
+          <a className="ghost" href="/ligacoes">
+            Outras Ligações
+          </a>
         </div>
       </header>
 

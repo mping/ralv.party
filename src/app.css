@@ -142,6 +142,7 @@ header {
 }
 
 .ghost {
+  display: inline-block;
   background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
@@ -149,6 +150,8 @@ header {
   padding: 0.5rem 1rem;
   cursor: pointer;
   font-size: 0.9rem;
+  text-decoration: none;
+  text-align: center;
 }
 .ghost:hover {
   background: var(--bg-soft);
@@ -361,6 +364,62 @@ main.list-mode {
 .unknown-card p {
   margin: 0 0 1.1rem;
   color: var(--muted);
+}
+
+/* ---------- info page ---------- */
+main.info {
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+.info-card {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+}
+.info-card p {
+  margin: 0 0 1rem;
+}
+.shift-maps {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.shift-maps a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.8rem 1rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.shift-maps a:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.shift-hours {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.shift-open {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.info-card .signature {
+  margin: 0;
+  font-weight: 600;
 }
 
 /* ---------- admin ---------- */
